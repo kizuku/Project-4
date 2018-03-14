@@ -30,6 +30,7 @@ public:
 private:
 	double m_loadFactor;
 	int m_items;
+	int m_numBuckets;
 
 	struct Node* {
 		KeyType m_key;
@@ -64,7 +65,7 @@ template<typename KeyType, typename ValueType>
 unsigned int MyHash<KeyType, ValueType>::getBucketNumber(const KeyType& key) const {
 	unsigned int ::hash(const KeyType& k); // prototype
 	unsigned int h = ::hash(key);
-	return h % 100;
+	return h % m_numBuckets;
 }
 
 template<typename KeyType, typename ValueType>
@@ -77,6 +78,7 @@ MyHash<KeyType, ValueType>::MyHash(double maxLoadFactor) {
 	else 
 		m_loadFactor = maxLoadFactor;
 	m_items = 0;
+	numBuckets = 100;
 }
 
 template<typename KeyType, typename ValueType>
@@ -85,32 +87,86 @@ MyHash<KeyType, ValueType>::~MyHash() {
 }
 
 template<typename KeyType, typename ValueType>
-MyHash<KeyType, ValueType>::reset() {
+void MyHash<KeyType, ValueType>::reset() {
 	cleanup();
 	m_buckets = new Node*[100];
 	m_items = 0;
 }
 
-// what if 2 diff words have same key?
 template<typename KeyType, typename ValueType>
-MyHash<KeyType, ValueType>::associate(const KeyType& key, const ValueType& value) {
+void MyHash<KeyType, ValueType>::associate(const KeyType& key, const ValueType& value) {
 	ValueType* val = find(key);
 	if (val == nullptr) { // insert
 		int bucket = getBucketNumber(key);
-		m_buckets[bucket] = new Node(key, value);
+		if (m_buckets[bucket] == nullptr) {
+			m_buckets[bucket] = new Node;
+			m_buckets[bucket]->m_key = key;
+			m_buckets[bucket]->m_value = value;
+			m_buckets[bucket]->next = nullptr;
+		}
+		else {
+			Node* ptr = m_buckets[bucket];
+			while (ptr->next != nullptr)
+				ptr = ptr->next;
+			ptr->next = new Node;
+			ptr->next->m_key = key;
+			ptr->next->m_value = value;
+			ptr->next->next = nullptr;
+		}
 		m_items++;
 	}
 	else { // update
 		*val = value;
 	}
+	// reallocate if necessary
+	if (getNumItems() / m_numBuckets > getLoadFactor()) {
+		int oldSize = m_numBuckets;
+		m_numBuckets *= 2;
+		Node** temp = new Node*[m_numBuckets];
+		for (int i = 0; i < oldSize; i++) {
+			if (m_buckets[i] != nullptr) {
+				Node* ptr = m_buckets[i];
+				while (ptr != nullptr) {
+					int newBucket = getBucketNumber(ptr->m_key);
+					if (temp[newBucket] == nullptr) {
+						temp[newBucket] = new Node;
+						temp[newBucket]->m_key = ptr->m_key;
+						temp[newBucket]->m_value = ptr->m_value;
+						temp[newBucket]->next = nullptr;
+					}
+					else {
+						Node* n = temp[newBucket];
+						while (n->next != nullptr)
+							n = n->next;
+						n->next = new Node;
+						n->next->m_key = ptr->m_key;
+						n->next->m_value = ptr->m_value;
+						n->next->next = nullptr;
+					}
+					ptr = ptr->next;
+				}
+			}
+		}
+		cleanup();
+		delete[] m_buckets;
+		m_buckets = temp;
+	}
 }
 
-// needs to be implemented
 template<typename KeyType, typename ValueType>
 const ValueType* MyHash<KeyType, ValueType>::find(const KeyType& key) const {
 	int bucket = getBucketNumber(key);
-	if (m_buckets[bucket] != nullptr)
-		return m_buckets[bucket];
+	if (m_buckets[bucket] != nullptr) {
+		Node* ptr = m_buckets[bucket];
+		while (ptr != nullptr) {
+			if (key == ptr->m_key)
+				return ptr->m_value;
+			else
+				ptr = ptr->next;
+		}
+		if (ptr == nullptr)
+			return nullptr;
+	}
 	else
 		return nullptr;
 }

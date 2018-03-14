@@ -1,6 +1,8 @@
 #include "provided.h"
+#include "MyHash.h"
 #include <string>
 #include <vector>
+#include <list>
 using namespace std;
 
 class WordListImpl
@@ -10,11 +12,13 @@ public:
     bool contains(string word) const;
     vector<string> findCandidates(string cipherWord, string currTranslation) const;
 private:
+	MyHash<string, list<string>> m_hashtable;
 };
 
 bool WordListImpl::loadWordList(string filename)
 {
-    return false;  // This compiles, but may not be correct
+	m_hashtable.reset();
+	//return false;  // This compiles, but may not be correct
 }
 
 bool WordListImpl::contains(string word) const

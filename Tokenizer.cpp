@@ -21,17 +21,25 @@ vector<string> TokenizerImpl::tokenize(const std::string& s) const
 {
 	vector<string> words;
 	string temp;
+	bool isSeparator;
 	for (int i = 0; i < s.size(); i++) {
+		isSeparator = false;
 		for (int j = 0; j < m_separators.size(); j++) {
 			if (s[i] == m_separators[j]) { // if char is a separator
+				isSeparator = true;
 				if (temp != "") {  // if temp is not empty
-					// add temp to vector
+					// add temp to vector and reset temp
 					words.push_back(temp);
+					temp = "";
 				}
-				break;
+				break; // don't check for other separators if char already matches one
 			}
 		}
-		temp += s[i];
+		// don't add separators to temp
+		if (isSeparator)
+			continue;
+		else 
+			temp += s[i];
 	}
     return words;  
 }

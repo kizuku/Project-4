@@ -1,5 +1,6 @@
 #include "provided.h"
 #include <string>
+#include <vector>
 using namespace std;
 
 class TranslatorImpl
@@ -9,6 +10,8 @@ public:
     bool popMapping();
     string getTranslation(const string& ciphertext) const;
 private:
+	vector<string> mapping;
+	string alphabet;
 };
 
 bool TranslatorImpl::pushMapping(string ciphertext, string plaintext)

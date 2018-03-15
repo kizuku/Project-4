@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 #include <list>
+#include <fstream>
+#include <cctype>
 using namespace std;
 
 class WordListImpl
@@ -12,23 +14,122 @@ public:
     bool contains(string word) const;
     vector<string> findCandidates(string cipherWord, string currTranslation) const;
 private:
+	string createPattern(string s) const;
 	MyHash<string, list<string>> m_hashtable;
 };
+
+// use letters to create pattern keys
+string WordListImpl::createPattern(string s) const{
+	string pattern;
+	// don't check first character
+	pattern += 'A';
+	for (int i = 1; i < s.size(); i++) {
+		// if word is invalid, return "-1"
+		if (!isalpha(s[i]) && s[i] != '\'') {
+			pattern = "-1";
+			break;
+		}
+		int increment = 0;
+		for (int j = 0; j < i; j++) {
+			if (s[i] != s[j])
+				increment++;
+		}
+		pattern += 'A' + increment;
+	}
+	return pattern;
+}
 
 bool WordListImpl::loadWordList(string filename)
 {
 	m_hashtable.reset();
-	//return false;  // This compiles, but may not be correct
+	ifstream infile(filename);
+	
+	if (!infile)  // file could not be opened
+		return false;
+	
+	string word;
+	list<string>* wordList;
+	while (getline(infile, word)) {
+		for (int i = 0; i < word.size(); i++)
+			word[i] = tolower(word[i]);
+
+		string pattern = createPattern(word);
+		if (pattern == "-1")
+			continue;
+		wordList = m_hashtable.find(pattern);
+		if (wordList == nullptr) {
+			list<string> newList;
+			newList.push_back(word);
+			m_hashtable.associate(pattern, newList);
+		}
+		else {
+			wordList->push_back(word);
+		}
+	}
+	// all words loaded successfully
+	return true;  
 }
 
 bool WordListImpl::contains(string word) const
 {
-    return false; // This compiles, but may not be correct
+	string temp = word;
+	for (int i = 0; i < temp.size(); i++) 
+		temp[i] = tolower(temp[i]);
+
+	string key = createPattern(temp);
+	const list<string> *wordList;
+	wordList = m_hashtable.find(key);
+	if (wordList == nullptr)
+		return false;
+	else {
+		for (list<string>::const_iterator it = wordList->begin(); it != wordList->end(); it++) {
+			if ((*it) == temp)
+				return true;
+		}
+	}
+	return false;
 }
 
 vector<string> WordListImpl::findCandidates(string cipherWord, string currTranslation) const
 {
-    return vector<string>();  // This compiles, but may not be correct
+	vector<string> possWords;
+
+	// check for valid conditions
+	if (cipherWord.size() != currTranslation.size())
+		return possWords;
+
+	for (int i = 0; i < cipherWord.size(); i++)
+		if (!isalpha(cipherWord[i]) && cipherWord[i] != '\'')
+			return possWords;
+
+	for (int i = 0; i < currTranslation.size(); i++)
+		if (!isalpha(currTranslation[i]) && currTranslation[i] != '\'' && currTranslation[i] != '?')
+			return possWords;
+
+	for (int i = 0; i < currTranslation.size(); i++) {
+		cipherWord[i] = tolower(cipherWord[i]);
+		currTranslation[i] = tolower(currTranslation[i]);
+	}
+
+	string cipherPattern = createPattern(cipherWord);
+	const list<string> *words = m_hashtable.find(cipherPattern);
+	if (words == nullptr)
+		return possWords;
+	else {
+		bool match;
+		for (list<string>::const_iterator it = words->begin(); it != words->end(); it++) {
+			match = true;
+			for (int i = 0; i < currTranslation.size(); i++) {
+				if (currTranslation[i] != '?' && currTranslation[i] != (*it)[i]) {
+					match = false;
+					break;
+				}
+			}
+			if (match)
+				possWords.push_back(*it);
+		}
+	}
+    return possWords; 
 }
 
 //***** hash functions for string, int, and char *****
